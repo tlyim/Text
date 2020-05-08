@@ -1,0 +1,124 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+
+```{r, message=F}
+
+#library(here)
+library(tidyverse)
+library(tabulizer)
+library(stringr)
+
+course_code = "FR2203"
+pdf_answerkey <- file.path("D:\\OneDrive - City, University of London\\@Courses\\FR2203\\! Exam, test, tutorials",
+                           "FR2203 (updated) - Online Company Valuation Answers - May 2020.pdf")
+
+data_answerkey <- pdftools::pdf_data(pdf_answerkey)[[1]] %>% 
+  filter(y > 181 & y < 680) %>% 
+  filter(x >= 99 & x <= 156) %>% 
+  select(-c(width, height, space)) %>% 
+  group_by(y) %>% 
+  spread(key = x, value = text) %>% 
+  ungroup() %>% 
+  mutate(Question = `142`, Answer = coalesce(`150`, `156`)) %>% 
+  select(Question, Answer) 
+
+#for tm::, see also https://www.charlesbordet.com/en/extract-pdf/#use-pdftoolspdf_text
+
+
+
+
+
+pdf_file <- file.path(pdf_path, "180027954.FR2203.pdf")
+
+data_MCanswers <- pdftools::pdf_data(pdf_file)[[2]] %>% 
+  filter(y > 184 & y < 613) %>% 
+  filter(x < 206) %>% 
+#  filter(x >= 99 & x <= 156) %>% 
+  select(-c(width, height, space)) %>% 
+  group_by(y) %>% 
+  spread(key = x, value = text) %>% 
+  ungroup() %>% 
+  mutate(Question = coalesce(`51`, `54`), Answer = `107`) %>% 
+  select(Question, Answer) 
+
+
+
+
+
+
+pdf_path = "D:\\OneDrive - City, University of London\\@Courses\\FR2203\\! Xchg\\allScripts"
+files <- list.files(path = pdf_path)
+#file_vector %>% head()
+
+#keep only pdf files
+files <- files[grepl(".pdf", files)]
+
+
+df.MC <- data.frame()
+#loop through all pdf files
+for(i in 209:length(files)){  #length(pdf_files)
+
+  pdf_file <- file.path(pdf_path, files[i])
+  tables.l <- tabulizer::extract_tables(pdf_file, 
+                                      pages = 2
+                                      )
+  # assume the longest table is the MC answer table
+  table_max <- lapply(tables.l, nrow) %>% which.max() %>% tables.l[[.]]
+  
+  if (nrow(table_max) <= 21) cat("\n", i, ": wrong table! - ", files[i], "\n")
+  else {
+
+    
+  
+suppressWarnings({  
+  answers_long <- table_max %>% 
+    data.frame() %>% 
+    mutate(Question = .[[1]] %>% as.character() %>% as.numeric(),  
+           # must use as.character() first; o/w, the variables are of factor type
+           # must use generic column index .[[1]], .[[2]] bc auto-assigned variables can be X1, V1 w/o certainty
+              Answer = .[[2]] %>% as.character()) %>% 
+    select(Question, Answer) %>% 
+    filter(Question <= 20) %>% 
+    mutate(Correct = ifelse(Answer == data_answerkey$Answer, 1, 0)) %>% 
+    
+    add_row(Question = 0, 
+            Correct = sum( (.) %>% filter(Question >= 1 & Question <= 20) %>% select(Correct)),
+            # Note: sum() and !is.na() are functions that do not take dataframe as an input and thus cannot follow %>%)
+            Answer = #paste(Correct,
+              sum(!is.na( (.) %>% filter(Question >= 1 & Question <= 20) %>% select(Answer))),
+                            # sep = "."),
+            ) %>% 
+    arrange(Question) 
+})  
+  
+  
+  # flip from long to wide
+  answers_wide <- answers_long %>% 
+    gather(key = "type", value = "value", 2:3) %>% 
+    spread(key = Question, value = value,
+           sep = "_") %>% 
+    rename(count = Question_0) %>% 
+    mutate(count = count %>% as.numeric()) %>% 
+    mutate(student = (files[i] %>% 
+                   stringr::str_split(pattern = "(\\p{P})", n = 2, simplify = T) %>% 
+                   c())[1]
+           ) %>% 
+    select(student, everything())
+   
+  if (grepl(course_code, files[i])) cat(i, ":", files[i], "; ") else cat("\n", i, ": wrong file! - ", files[i], "\n")
+
+  df.MC <- bind_rows(df.MC, answers_wide)
+  
+  } #end of else
+  
+} #end of for-loop
+
+
+
+```
+
+
