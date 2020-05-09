@@ -37,7 +37,7 @@ files <- list.files(path = file.path(pdf_path, script_dir))
 #keep only pdf files
 files <- files[grepl(".pdf", files)]
 
-
+write
 
 df.MC <- data.frame()
 #loop through all pdf files
@@ -248,6 +248,9 @@ df.merged <- left_join(df.Answer, df.Correct,
   select(student, countCor, starts_with("a"), everything()) %>% 
   arrange(countCor) 
 
+xlsx::write.xlsx(df.merged, file = paste0("G:/My Drive/! ! ! Download/", course_code, "_MCamrks.xlsx"),
+                 append = FALSE)
+
 # randomly select 4 cases below 15 correct for checking
 df.check <- df.merged %>% 
   filter(countCor <= 15) %>% 
@@ -255,7 +258,6 @@ df.check <- df.merged %>%
   select(key, starts_with("a")) %>% 
   sample_n(4) %>% 
   t()
-
 
 ```
 
