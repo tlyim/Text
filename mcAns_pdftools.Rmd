@@ -33,8 +33,7 @@ data_answerkey <- pdftools::pdf_data(pdf_answerkey)[[1]] %>%
 ```{r, message=F}
 
 script_dir = "allScripts" #"wrongScripts - Copy"
-pdf_path = "D:\\OneDrive - City, University of London\\@Courses\\FR2203\\! Xchg"
-#pdf_path = "D:\\OneDrive - City, University of London\\@Courses\\FR2203\\! Xchg\\allScripts"
+pdf_path = "D:\\OneDrive - City, University of London\\@Courses\\FR2203\\! Exam, test, tutorials/OnlineExam2020"
 files <- list.files(path = file.path(pdf_path, script_dir))
 #keep only pdf files
 files <- files[grepl(".pdf", files)]
@@ -201,7 +200,7 @@ for(i in 1:length(files)){  #length(files)
 
 ```
 
-# Sanity checks
+# Sanity checks and write out MC marks to .xlsx file
 ```{r}
 
 (df.MC %>% filter(type == "Answer"))$count %>% unique()
@@ -245,7 +244,7 @@ df.check <- df.merged %>%
 # set paths for source and destination directories
 destin_dir = "markedScripts"  
 script_dir = "allScripts"  
-pdf_path = "D:\\OneDrive - City, University of London\\@Courses\\FR2203\\! Xchg"
+pdf_path = "D:\\OneDrive - City, University of London\\@Courses\\FR2203\\! Exam, test, tutorials/OnlineExam2020"
 files <- list.files(path = file.path(pdf_path, script_dir))
 #keep only pdf files
 files <- files[grepl(".pdf", files)]
@@ -254,7 +253,7 @@ files <- files[grepl(".pdf", files)]
 # read in marks from Excel worksheet
 df_exam <- readxl::read_excel(
   paste0("G:/My Drive/! ! ! Download/", "FR2203 - Company Valuation Gradesheet - Spring 2020.xlsx"),
-  range = paste0("copy!A1:Q", 1+length(files)))
+  range = paste0("marked!A1:Q", 1+length(files)))
 
 
 # define function for printing percentage marks 
