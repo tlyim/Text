@@ -5,9 +5,11 @@ output: html_notebook
 
 # Load packages and answer key
 ```{r}
-#library(here)
+library(here)
 library(tidyverse)   # include stringr
-#library(tabulizer)
+library(pdftools)  
+library(magick)
+library(scales)
 
 course_code = "FR2203"
 pdf_answerkey <- file.path("D:\\OneDrive - City, University of London\\@Courses\\FR2203\\! Exam, test, tutorials",
@@ -16,12 +18,12 @@ pdf_answerkey <- file.path("D:\\OneDrive - City, University of London\\@Courses\
 data_answerkey <- pdftools::pdf_data(pdf_answerkey)[[1]] %>% 
   filter(y > 181 & y < 680) %>% 
   filter(x >= 99 & x <= 156) %>% 
-  select(-c(width, height, space)) %>% 
+  dplyr::select(-c(width, height, space)) %>% 
   group_by(y) %>% 
   spread(key = x, value = text) %>% 
   ungroup() %>% 
   mutate(Question = `142`, Answer = coalesce(`150`, `156`)) %>% 
-  select(Question, Answer) 
+  dplyr::select(Question, Answer) 
 
 #for tm::, see also https://www.charlesbordet.com/en/extract-pdf/#use-pdftoolspdf_text
 
@@ -238,8 +240,9 @@ df.check <- df.merged %>%
 ```
 
 # Write back LQ and MCQ marks to exam scripts
-```{r}
+```{r, message = T}
 
+# set paths for source and destination directories
 destin_dir = "markedScripts"  
 script_dir = "allScripts"  
 pdf_path = "D:\\OneDrive - City, University of London\\@Courses\\FR2203\\! Xchg"
@@ -248,181 +251,70 @@ files <- list.files(path = file.path(pdf_path, script_dir))
 files <- files[grepl(".pdf", files)]
 
 
+# read in marks from Excel worksheet
+df_exam <- readxl::read_excel(
+  paste0("G:/My Drive/! ! ! Download/", "FR2203 - Company Valuation Gradesheet - Spring 2020.xlsx"),
+  range = paste0("copy!A1:Q", 1+length(files)))
 
-df.MC <- data.frame()
+
+# define function for printing percentage marks 
+pct <- function(x) round(100*x, 1)
+
+
 #loop through all pdf files
-for(i in 1:min(1, length(files))){  #length(files)
+for(i in 1:length(files)){  #length(files)
   
-#i=1
+  # set the pdf file in concern
   pdf_file <- file.path(pdf_path, script_dir, files[i])
-  
   
   studentID <- (files[i] %>% stringr::str_split(pattern = "( |\\p{P})", n = 2, simplify = T) %>% 
                      c())[1]  
-    
-  data_prelim <- data.frame()
-  for (j in ifelse(studentID == "180003772" | studentID == "180026374", 3, 2):3) {  
+  
+  cat(i, ":", studentID, "; ")
+  
+  # find the marks of the student in concern  
+  marks <- df_exam %>% filter(student == studentID)
+  
+  # set the texts for the marks to print    
+  MCQ = paste0("MC = ", pct(marks$MC), 
+               "% (", marks$countCor, " correct out of 20)")    
+  Q21 = paste0("Q21 = ", pct(marks$Q21))
+  Q22 = paste0("Q22 = ", pct(marks$Q22))
+  divider = paste0("----------------")
+  Total = paste0("Total = ", pct(marks$Grade), "%")
+  
+  
+  # convert p. 1 of exam script to an image file
+  page1 <- pdftools::pdf_convert(pdf_file, format = "png", pages = 1:1,
+                                 verbose = F)  # format = "jpg"
+  # read in the page-1 image as an magick object
+  img_src <- image_read(file.path(here::here(), page1))
 
-#j=2    
-    data_temp <- pdftools::pdf_data(pdf_file)[[j]]  
-      
-    # pdf_file <- file.path(pdf_path, script_dir, "180003772.FR2203.pdf")
-    # data_prelim <- pdftools::pdf_data(pdf_file)[[3]] %>% 
-      
+  # open the device to draw the image and add texts to it
+  img_out <- image_draw(img_src)
+    text(30, 700, MCQ, pos = 4, col = "red")
+    text(30, 710, Q21, pos = 4, col = "red")
+    text(30, 720, Q22, pos = 4, col = "red")
+    text(30, 730, divider, pos = 4, col = "red")
+    text(30, 740, Total, pos = 4, col = "red")
+  dev.off()
 
-mark_MCQ = 45
-mark_Q21 = 22
-mark_Q22 = 17
-mark_Total = 84
-    
-# a = paste0("Starting portfolio value: $", prettyNum(1000000,big.mark=",",scientific=F))
-# b = "Inflation assumptions of 3% annually"
-# c = "Average annual returns: 6%"
-# d ="Average annual volatility: 7%"
-MCQ = paste0("MC = ", mark_MCQ)    
-Q21 = paste0("Q21 = ", mark_Q21)
-Q22 = paste0("Q22 = ", mark_Q22)
-divider = paste0("-------------")
-Total = paste0("Total = ", mark_Total)
+  # plot the image file  
+  image_write(img_out , format = "pdf", "newpage1.pdf")
 
-#pdf('out.pdf',width=5,height=5)
-pdf(file.path(pdf_path, destin_dir, 'out.pdf'), 
-    width=8.27, height=11.69)
-plot(NA, xlim=c(0, 8.27), ylim=c(0, 11.69), bty='n',
-     xaxt='n', yaxt='n', xlab='', ylab='')
-# text(1,4,a, pos=4)
-# text(1,3,b, pos=4)
-# text(1,2,c, pos=4)
-# text(1,1,d, pos=4)
-text(0, 0.7, MCQ, pos = 4, col = "red")
-text(0, 0.5, Q21, pos = 4, col = "red")
-text(0, 0.3, Q22, pos = 4, col = "red")
-text(0, 0.15, divider, pos = 4, col = "red")
-text(0, 0.0, Total, pos = 4, col = "red")
-#points(rep(1,4),1:4, pch=15)
-dev.off()
-    
-    
-      
-      
-#    if (nrow(data_prelim) == 60) break
-    
-    } #end of inner for-loop
+  # extract all remaining pages beyond p. 1
+  pdf_subset(pdf_file, pages = 2:pdf_length(pdf_file), output = "subset.pdf")
+
+  # Combine the new page 1 with the old remaining pages
+  pdf_combine(c("newpage1.pdf", "subset.pdf"), 
+    output = file.path(pdf_path, destin_dir, files[i]))
+
+  # Clean up the files no longer needed
+  unlink(c(page1, "newpage1.pdf", "subset.pdf"))
   
   } #end of for-loop
 
-
-
-
-
-library(magick)
-
-# convert p. 1 of exam script to an image file
-file_convert <- pdftools::pdf_convert(pdf_file, format = "png", pages = 1:1)  # format = "jpg"
-
-img_src <- image_read(file.path(here::here(), file_convert))
-
-img_out <- image_draw(frink)
-text(30, 700, MCQ, pos = 4, col = "red")
-text(30, 710, Q21, pos = 4, col = "red")
-text(30, 720, Q22, pos = 4, col = "red")
-text(30, 730, divider, pos = 4, col = "red")
-text(30, 740, Total, pos = 4, col = "red")
-dev.off()
-
-# plot the image file  
-image_write(img_out , format = "pdf", 
-            file.path(pdf_path, destin_dir, 'out2.pdf'))
-
-# Cleanup the image file
-unlink(c(file_convert))
-
-
-
-
-
-
-
-
-
-
-
-
-
-# Import the image
-# img.file <- system.file(file.path("images", "background-image.png"),
-#                        package = "ggpubr")
-img <- png::readPNG(file.path(here::here(), file_convert))
-
-library(png)
-library(ggplot2)
-# Plot with background image
-p <- ggplot(iris, aes(Species, Sepal.Length)) +
-# background_image(img) +
- geom_boxplot(aes(fill = Species), color = "white") 
-#+ fill_palette("jco")
-
-ggimage::ggbackground(p, img)
-
-
-# open the pdf device to accept all the plots and texts to be printed to the device
-pdf(file.path(pdf_path, destin_dir, 'out2.pdf'), 
-    width=8.27, height=11.69)
-
-# plot the image file first 
-p0 <- ggplotify::as.ggplot(~
-  raster::plotRGB(r, axes=FALSE, 
-                margins = FALSE, plt = c(0,0,0,0))
-)
-
-# plot a null placeholder for the texts to be included next
-p <- ggplotify::as.ggplot(~
-plot(NA, xlim=c(0, 8.27), ylim=c(0, 11.69), bty='n',
-     xaxt='n', yaxt='n', xlab='', ylab='')
-) + 
-  p0 + 
-  annotate(geom="text", x=0.1, y=0.17, label=MCQ, color="red")
-
-text(1, 1.7, MCQ, pos = 4, col = "red")
-text(1, 1.5, Q21, pos = 4, col = "red")
-text(1, 1.3, Q22, pos = 4, col = "red")
-text(1, 1.15, divider, pos = 4, col = "red")
-text(1, 1.0, Total, pos = 4, col = "red")
-
-# close the pdf device
-dev.off()
-
-# Cleanup the image file
-unlink(c(file_convert))
-
-
-
-
-
-
-
-
-library(staplr)
-options('staplr_java_options' = '-Xmx512m')
-
-pdfFile = system.file('testForm.pdf', package = 'staplr')
-output_file <- file.path(pdf_path, destin_dir, 'out.pdf')
-select_pages(selpages = 1, 
-             pdfFile, 
-#             pdf_file, 
-             "D:\\OneDrive - City, University of London\\@Courses\\FR2203\\! Xchg\\markedScripts\\out2.pdf")
-
-pdfFile = system.file('testForm.pdf', package = 'staplr')
-fields = get_fields(pdfFile)
-
-file.path(pdf_path, destin_dir, 'out.pdf')
-
-
-pdf_convert("news.pdf", pages = 1:3)
-
-
-
-
-
 ```
+
+
 
