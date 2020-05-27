@@ -252,7 +252,7 @@ files <- files[grepl(".pdf", files)]
 
 # read in marks from Excel worksheet
 df_exam <- readxl::read_excel(
-  paste0("G:/My Drive/! ! ! Download/", "FR2203 - Company Valuation Gradesheet - Spring 2020.xlsx"),
+  file.path(pdf_path, "FR2203 - Company Valuation Gradesheet - Spring 2020 (all sheets).xlsx"),
   range = paste0("marked!A1:Q", 1+length(files)))
 
 
@@ -269,48 +269,55 @@ for(i in 1:length(files)){  #length(files)
   studentID <- (files[i] %>% stringr::str_split(pattern = "( |\\p{P})", n = 2, simplify = T) %>% 
                      c())[1]  
   
-  cat(i, ":", studentID, "; ")
+############################################################  
+# Note: Below is a flexible control to handle speciific student, if necessary, by commenting out "| TRUE"
+  if (studentID == 170042107 # (with non-A4-size pdf)    #170058149 
+      #| TRUE 
+      ) {
   
-  # find the marks of the student in concern  
-  marks <- df_exam %>% filter(student == studentID)
+    cat(i, ":", studentID, "; ")
+    
+    # find the marks of the student in concern  
+    marks <- df_exam %>% filter(student == studentID)
+    
+    # set the texts for the marks to print    
+    MCQ = paste0("MC = ", pct(marks$MC), 
+                 "% (", marks$countCor, " correct out of 20)")    
+    Q21 = paste0("Q21 = ", pct(marks$Q21))
+    Q22 = paste0("Q22 = ", pct(marks$Q22))
+    divider = paste0("----------------")
+    Total = paste0("Total = ", pct(marks$Grade), "%")
+    
+    
+    # convert p. 1 of exam script to an image file
+    page1 <- pdftools::pdf_convert(pdf_file, format = "png", pages = 1:1,
+                                   verbose = F)  # format = "jpg"
+    # read in the page-1 image as an magick object
+    img_src <- image_read(file.path(here::here(), page1))
   
-  # set the texts for the marks to print    
-  MCQ = paste0("MC = ", pct(marks$MC), 
-               "% (", marks$countCor, " correct out of 20)")    
-  Q21 = paste0("Q21 = ", pct(marks$Q21))
-  Q22 = paste0("Q22 = ", pct(marks$Q22))
-  divider = paste0("----------------")
-  Total = paste0("Total = ", pct(marks$Grade), "%")
+    # open the device to draw the image and add texts to it
+    img_out <- image_draw(img_src)
+      text(30, 700, MCQ, pos = 4, col = "red")
+      text(30, 710, Q21, pos = 4, col = "red")
+      text(30, 720, Q22, pos = 4, col = "red")
+      text(30, 730, divider, pos = 4, col = "red")
+      text(30, 740, Total, pos = 4, col = "red")
+    dev.off()
   
+    # plot the image file  
+    image_write(img_out , format = "pdf", "newpage1.pdf")
   
-  # convert p. 1 of exam script to an image file
-  page1 <- pdftools::pdf_convert(pdf_file, format = "png", pages = 1:1,
-                                 verbose = F)  # format = "jpg"
-  # read in the page-1 image as an magick object
-  img_src <- image_read(file.path(here::here(), page1))
-
-  # open the device to draw the image and add texts to it
-  img_out <- image_draw(img_src)
-    text(30, 700, MCQ, pos = 4, col = "red")
-    text(30, 710, Q21, pos = 4, col = "red")
-    text(30, 720, Q22, pos = 4, col = "red")
-    text(30, 730, divider, pos = 4, col = "red")
-    text(30, 740, Total, pos = 4, col = "red")
-  dev.off()
-
-  # plot the image file  
-  image_write(img_out , format = "pdf", "newpage1.pdf")
-
-  # extract all remaining pages beyond p. 1
-  pdf_subset(pdf_file, pages = 2:pdf_length(pdf_file), output = "subset.pdf")
-
-  # Combine the new page 1 with the old remaining pages
-  pdf_combine(c("newpage1.pdf", "subset.pdf"), 
-    output = file.path(pdf_path, destin_dir, files[i]))
-
-  # Clean up the files no longer needed
-  unlink(c(page1, "newpage1.pdf", "subset.pdf"))
+    # extract all remaining pages beyond p. 1
+    pdf_subset(pdf_file, pages = 2:pdf_length(pdf_file), output = "subset.pdf")
   
+    # Combine the new page 1 with the old remaining pages
+    pdf_combine(c("newpage1.pdf", "subset.pdf"), 
+      output = file.path(pdf_path, destin_dir, files[i]))
+  
+    # Clean up the files no longer needed
+    unlink(c(page1, "newpage1.pdf", "subset.pdf"))
+  
+    } #end of if for handing specific student 
   } #end of for-loop
 
 ```
