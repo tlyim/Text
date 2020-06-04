@@ -11,18 +11,27 @@ library(pdftools)
 library(magick)
 library(scales)
 
-course_code = "FR2203" # This is the FR2203 workable version
-pdf_answerkey <- file.path("D:\\OneDrive - City, University of London\\@Courses\\FR2203\\! Exam, test, tutorials",
-                           "FR2203 (updated) - Online Company Valuation Answers - May 2020.pdf")
+course_code = "BS2203" # This is the BS2203 workable version
+pdf_path = "D:\\OneDrive - City, University of London\\@Courses\\BS2203\\! Exam, test/OnlineExam2020"
+pdf_answerkey <- file.path(pdf_path, "..", "BS2203 (revised) - Online Financial Analysis Answers - May 2020.pdf")
+# pdf_answerkey <- file.path("D:\\OneDrive - City, University of London\\@Courses\\BS2203\\! Exam, test, tutorials", "BS2203 (updated) - Online Company Valuation Answers - May 2020.pdf")
 
-data_answerkey <- pdftools::pdf_data(pdf_answerkey)[[1]] %>% 
-  filter(y > 181 & y < 680) %>% 
-  filter(x >= 99 & x <= 156) %>% 
+# FR2203
+  # data_answerkey <- pdftools::pdf_data(pdf_answerkey)[[1]] %>%
+  #   filter(y > 181 & y < 680) %>% 
+  #   filter(x >= 99 & x <= 156) %>% 
+# BS2203
+data_answerkey <- pdftools::pdf_data(pdf_answerkey)[[2]] %>%
+  filter(y > 240 & y < 671) %>% 
+  filter(x >= 164 & x <= 177) %>% 
   dplyr::select(-c(width, height, space)) %>% 
   group_by(y) %>% 
   spread(key = x, value = text) %>% 
   ungroup() %>% 
-  mutate(Question = `142`, Answer = coalesce(`150`, `156`)) %>% 
+# FR2203
+  # mutate(Question = `142`, Answer = coalesce(`150`, `156`)) %>% 
+# BS2203
+  mutate(Question = `164`, Answer = coalesce(`171`, `177`)) %>% 
   dplyr::select(Question, Answer) 
 
 #for tm::, see also https://www.charlesbordet.com/en/extract-pdf/#use-pdftoolspdf_text
@@ -33,7 +42,7 @@ data_answerkey <- pdftools::pdf_data(pdf_answerkey)[[1]] %>%
 ```{r, message=F}
 
 script_dir = "allScripts" #"wrongScripts - Copy"
-pdf_path = "D:\\OneDrive - City, University of London\\@Courses\\FR2203\\! Exam, test, tutorials/OnlineExam2020"
+# pdf_path = "D:\\OneDrive - City, University of London\\@Courses\\FR2203\\! Exam, test, tutorials/OnlineExam2020"
 files <- list.files(path = file.path(pdf_path, script_dir))
 #keep only pdf files
 files <- files[grepl(".pdf", files)]
@@ -44,7 +53,7 @@ df.MC <- data.frame()
 #loop through all pdf files
 for(i in 1:length(files)){  #length(files)
   
-#i=1
+#i=94
   pdf_file <- file.path(pdf_path, script_dir, files[i])
   
   
@@ -52,7 +61,12 @@ for(i in 1:length(files)){  #length(files)
                      c())[1]  
     
   data_prelim <- data.frame()
-  for (j in ifelse(studentID == "180003772" | studentID == "180026374", 3, 2):3) {  
+  for (j in ifelse(
+    # FR2203
+      # studentID == "180003772" | studentID == "180026374", 
+    # BS2203
+      studentID == "180010262" , 
+                   3, 2):3) {  
 
 #j=2    
     data_temp <- pdftools::pdf_data(pdf_file)[[j]] %>% 
@@ -244,7 +258,7 @@ df.check <- df.merged %>%
 # set paths for source and destination directories
 destin_dir = "markedScripts"  
 script_dir = "allScripts"  
-pdf_path = "D:\\OneDrive - City, University of London\\@Courses\\FR2203\\! Exam, test, tutorials/OnlineExam2020"
+# pdf_path = "D:\\OneDrive - City, University of London\\@Courses\\FR2203\\! Exam, test, tutorials/OnlineExam2020"
 files <- list.files(path = file.path(pdf_path, script_dir))
 #keep only pdf files
 files <- files[grepl(".pdf", files)]
