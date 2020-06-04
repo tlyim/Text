@@ -11,7 +11,7 @@ library(pdftools)
 library(magick)
 library(scales)
 
-course_code = "FR2203"
+course_code = "FR2203" # This is the FR2203 workable version
 pdf_answerkey <- file.path("D:\\OneDrive - City, University of London\\@Courses\\FR2203\\! Exam, test, tutorials",
                            "FR2203 (updated) - Online Company Valuation Answers - May 2020.pdf")
 
