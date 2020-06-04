@@ -239,7 +239,7 @@ df.merged <- left_join(df.Answer, df.Correct,
   select(student, countCor, starts_with("a"), everything()) %>% 
   arrange(countCor) 
 
-xlsx::write.xlsx(df.merged, file = paste0("G:/My Drive/! ! ! Download/", course_code, "_MCmarks.xlsx"),
+xlsx::write.xlsx(df.merged, file = paste0(pdf_path, "/", course_code, "_MCmarks.xlsx"),
                  append = FALSE)
 
 # randomly select 4 cases below "15 correct" for checking
@@ -266,7 +266,8 @@ files <- files[grepl(".pdf", files)]
 
 # read in marks from Excel worksheet
 df_exam <- readxl::read_excel(
-  file.path(pdf_path, "FR2203 - Company Valuation Gradesheet - Spring 2020 (all sheets).xlsx"),
+#  file.path(pdf_path, "FR2203 - Company Valuation Gradesheet - Spring 2020 (all sheets).xlsx"),
+  file.path(pdf_path, "BS2203 - Financial Analysis Gradesheet - Spring 2020 (all sheets).xlsx"),
   range = paste0("marked!A1:Q", 1+length(files)))
 
 
@@ -285,8 +286,9 @@ for(i in 1:length(files)){  #length(files)
   
 ############################################################  
 # Note: Below is a flexible control to handle speciific student, if necessary, by commenting out "| TRUE"
-  if (studentID == 170042107 # (with non-A4-size pdf)    #170058149 
-      #| TRUE 
+  if (#studentID == 170042107 # (with non-A4-size pdf)    #170058149 
+      #| 
+      TRUE 
       ) {
   
     cat(i, ":", studentID, "; ")
