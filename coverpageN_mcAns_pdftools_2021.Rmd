@@ -1,0 +1,362 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+# Load packages 
+```{r}
+library(here)
+library(tidyverse)   # include stringr
+library(pdftools)  
+library(magick)
+library(scales)
+
+
+course_code = "FR2203" # This is the BS2203 workable version
+pdf_path = "G:/My Drive/@F/FR2203_moodle/FR_ExamMarking"
+#gradesheet = "Copy_May 2021 Gradesheet - FR2203 Company Valuation.xlsx"
+gradesheet = "FR_marks_May2021.xlsx"
+# course_code = "BS2203" # This is the BS2203 workable version
+# pdf_path = "G:/My Drive/@F/BS2203_moodle/BS_ExamMarking"
+# gradesheet = "Copy_.xlsx"
+
+
+# set paths for source and destination directories of exam scripts
+script_dir = "allScripts"  
+#script_dir = "backupScripts"  
+destin_dir = "markedScripts"  
+
+```
+
+
+
+# Load answer key
+```{r, eval=F}
+pdf_answerkey <- file.path(pdf_path, "..", "BS2203 (revised) - Online Financial Analysis Answers - May 2020.pdf")
+# pdf_answerkey <- file.path("D:\\OneDrive - City, University of London\\@Courses\\BS2203\\! Exam, test, tutorials", "BS2203 (updated) - Online Company Valuation Answers - May 2020.pdf")
+
+# FR2203
+  # data_answerkey <- pdftools::pdf_data(pdf_answerkey)[[1]] %>%
+  #   filter(y > 181 & y < 680) %>% 
+  #   filter(x >= 99 & x <= 156) %>% 
+# BS2203
+data_answerkey <- pdftools::pdf_data(pdf_answerkey)[[2]] %>%
+  filter(y > 240 & y < 671) %>% 
+  filter(x >= 164 & x <= 177) %>% 
+  dplyr::select(-c(width, height, space)) %>% 
+  group_by(y) %>% 
+  spread(key = x, value = text) %>% 
+  ungroup() %>% 
+# FR2203
+  # mutate(Question = `142`, Answer = coalesce(`150`, `156`)) %>% 
+# BS2203
+  mutate(Question = `164`, Answer = coalesce(`171`, `177`)) %>% 
+  dplyr::select(Question, Answer) 
+
+#for tm::, see also https://www.charlesbordet.com/en/extract-pdf/#use-pdftoolspdf_text
+
+```
+
+# Process pdf MC answer sheet
+```{r, eval=F, message=F}
+
+script_dir = "allScripts" #"wrongScripts - Copy"
+# pdf_path = "D:\\OneDrive - City, University of London\\@Courses\\FR2203\\! Exam, test, tutorials/OnlineExam2020"
+files <- list.files(path = file.path(pdf_path, script_dir))
+#keep only pdf files
+files <- files[grepl(".pdf", files)]
+
+#-----------------------------------------2bdel write
+
+df.MC <- data.frame()
+#loop through all pdf files
+for(i in 1:length(files)){  #length(files)
+  
+#i=94
+  pdf_file <- file.path(pdf_path, script_dir, files[i])
+  
+  
+  studentID <- (files[i] %>% stringr::str_split(pattern = "( |\\p{P})", n = 2, simplify = T) %>% 
+                     c())[1]  
+    
+  data_prelim <- data.frame()
+  for (j in ifelse(
+    # FR2203
+      # studentID == "180003772" | studentID == "180026374", 
+    # BS2203
+      studentID == "180010262" , 
+                   3, 2):3) {  
+
+#j=2    
+    data_temp <- pdftools::pdf_data(pdf_file)[[j]] %>% 
+      
+    # pdf_file <- file.path(pdf_path, script_dir, "180003772.FR2203.pdf")
+    # data_prelim <- pdftools::pdf_data(pdf_file)[[3]] %>% 
+      
+      # take care of a weird case where extra ! appear next to numbers and alphabets
+      mutate(text = str_replace_all(text, " |!|\\)", "") %>% str_squish()) %>% 
+      filter(text != "") %>% 
+      # remove rows for page number
+      filter(y < 778) %>% 
+      mutate(y = j + y/max(y)) %>% 
+      arrange(y) 
+      # filter(y > 184 & y < 613) %>% 
+      # filter(x < 206) %>% 
+      # extract only rows containing question no. 1-20 and the MC ans
+    
+    data_prelim <- bind_rows(data_prelim, data_temp) %>% 
+        slice(min(which(.$text == 1)):          
+              # max(which(.$text == 20))) %>%   # extract only rows containing question no. 1-20 and the MC ans
+              max(which(.$text == 
+                      min(21, # extract only rows containing question no. 1-21 and the MC ans in-between
+                          filter(., grepl("^[0-9]{1,2}$", text))$text %>%
+                            as.numeric() %>% 
+                            max(na.rm = T))
+                      ))
+              # allow for truncated tables with, say, only up to Q17
+              # handled by finding the max Q no. and capped it at 20 (to avoid wrongly including Q21, etc)
+            ) %>% 
+#      filter(text != "21")
+#      filter(grepl("^([0-9]|1[0-9]|20|[A-Za-z])$", text))
+      filter(grepl("^([0-9]|1[0-9]|20|21|[A-Za-z])$", text))
+      
+    if (nrow(data_prelim) == 62) break
+#    if (nrow(data_prelim) == 60) break
+    
+    } #end of inner for-loop
+
+      
+  #suppressWarnings({    
+  data_MCanswers <- data_prelim %>%     
+    # slice(min(which(.$text == 1)):          
+    #         # max(which(.$text == 20))) %>%   # extract only rows containing question no. 1-20 and the MC ans
+    #         max(which(.$text == 
+    #                 min(20, # extract only rows containing question no. 1-21 and the MC ans in-between
+    #                     filter(., grepl("^[0-9]{1,2}$", text))$text %>%
+    #                       as.numeric() %>% 
+    #                       max(na.rm = T))
+    #                 ))
+    #         # allow for truncated tables with, say, only up to Q17
+    #         # handled by finding the max Q no. and capped it at 20 (to avoid wrongly including Q21, etc)
+    #       ) %>%   
+    select(-c(width, height, space)) %>% 
+    group_by(y) %>% 
+    spread(key = x, value = text) %>% 
+    ungroup() %>% 
+  #    select(-y) %>% 
+    hablar::retype()  # change the type of each column accordingly
+  #})
+  
+        
+  # separate numeric and non-numeric columns    
+  num_data <- select_if(data_MCanswers, is.numeric) %>% select(-y)
+  nonnum_data <- select_if(data_MCanswers, negate(is.numeric))
+  
+  # consolidate numeric and non-numeric columns into Question and Answer columns
+  answers_prelim <- data_MCanswers %>% 
+    mutate(Question = do.call(coalesce, num_data), 
+           Answer = do.call(coalesce, nonnum_data) %>% toupper(),
+           ) %>% 
+    select(y, Question, Answer) %>% 
+    mutate(y_L1 = lag(y),
+           y_F1 = lead(y),
+           ) %>% 
+    select(y, y_F1, y_L1, everything()) %>% 
+    # replace missing Question no. by closest non-missing value
+    mutate(Question = #Question_my = 
+             ifelse( is.na(Question) & is.na(y_F1) & is.na(y_L1), Question, 
+             ifelse( is.na(Question) & !is.na(y_F1) & is.na(y_L1), lead(Question), 
+             ifelse( is.na(Question) & is.na(y_F1) & !is.na(y_L1), lag(Question), 
+             ifelse( is.na(Question) & (abs(y_F1 - y) <= abs(y_L1 - y)), lead(Question), 
+             ifelse( is.na(Question) & (abs(y_F1 - y) > abs(y_L1 - y)), lag(Question), 
+               Question
+               ))))) 
+           ) %>% 
+    # remove missing Answer
+    filter(!is.na(Answer))
+     
+  
+  answers_long <- answers_prelim %>%     
+  #  filter(Question <= 20) %>% 
+    select(Question, Answer) %>% 
+    # NOte: very important to sort here (for answer table that spread between p. 2 and p. 3)
+    arrange(Question)
+
+  
+#####################################################
+  if (nrow(answers_long) != 20) { 
+    cat("\n---------------> ", i, ": wrong table! - ", files[i], "\n")
+    file.copy(file.path(pdf_path, script_dir, files[i]), file.path(pdf_path, "wrongScripts", files[i]), 
+              overwrite = TRUE)
+    } else {
+   
+    # Mark correct answers based on data_answerkey
+    answers_marked <- answers_long %>%  #data_MCanswers %>%      
+      mutate(Correct = ifelse(Answer == data_answerkey$Answer, 1, 0)) %>% 
+      add_row(Question = 0, 
+              Correct = sum( (.) %>% filter(Question >= 1 & Question <= 20) %>% select(Correct)),
+              # Note: sum() and !is.na() are functions that do not take dataframe as an input and thus cannot follow %>%)
+              Answer = #paste(Correct,
+                sum(!is.na( (.) %>% filter(Question >= 1 & Question <= 20) %>% select(Answer))),
+                              # sep = "."),
+              ) %>% 
+      arrange(Question) 
+    
+    
+    # flip from long to wide
+    answers_wide <- answers_marked %>% 
+      gather(key = "type", value = "value", 2:3) %>% 
+      spread(key = Question, value = value,
+             sep = "_") %>% 
+      rename(count = Question_0) %>% 
+      mutate(count = as.integer(count)) %>% 
+      mutate(student = studentID) %>% 
+      # mutate(student = (files[i] %>% 
+      #                stringr::str_split(pattern = "(\\p{P})", n = 2, simplify = T) %>% 
+      #                c())[1]
+      #        ) %>% 
+      select(student, everything())
+     
+    if (grepl(course_code, files[i])) {
+      cat(i, ":", files[i], "; ") 
+      } else { 
+        cat("\n----------> ", i, ": wrong file! - ", files[i], "\n")
+        file.copy(file.path(pdf_path, script_dir, files[i]), file.path(pdf_path, "wrongScripts", files[i]), 
+                   overwrite = TRUE)
+        }
+  
+    df.MC <- bind_rows(df.MC, answers_wide)
+    
+    } #end of else
+  
+  } #end of for-loop
+
+```
+
+# Sanity checks and write out MC marks to .xlsx file
+```{r, eval=F}
+
+(df.MC %>% filter(type == "Answer"))$count %>% unique()
+(df.MC %>% filter(type == "Correct"))$count %>% unique()
+
+df.Answer <- df.MC %>% filter(type == "Answer") %>% 
+  select(-type) %>% 
+  rename_at(vars(starts_with("Question_")), 
+            list(~ str_replace(., "Question_", "a")))
+
+df.Correct <- df.MC %>% filter(type == "Correct") %>%   
+  select(-type) %>% 
+  rename_at(vars(starts_with("Question_")), 
+            list(~ str_replace(., "Question_", "Cor")))
+
+
+
+df.merged <- left_join(df.Answer, df.Correct, 
+                       by = "student",
+                       suffix = c("Ans", "Cor")
+                       ) %>% 
+  select(student, countCor, starts_with("a"), everything()) %>% 
+  arrange(countCor) 
+
+xlsx::write.xlsx(df.merged, file = paste0(pdf_path, "/", course_code, "_MCmarks.xlsx"),
+                 append = FALSE)
+
+# randomly select 4 cases below "15 correct" for checking
+df.check <- df.merged %>% 
+  filter(countCor <= 15) %>% 
+  mutate(key = paste0(student, "_", countCor)) %>% 
+  select(key, starts_with("a")) %>% 
+  sample_n(4) %>% 
+  t()
+
+```
+
+
+
+# Write back LQ and MCQ marks to exam scripts
+```{r, message = T}
+
+files <- list.files(path = file.path(pdf_path, script_dir))
+#keep only pdf files
+files <- files[grepl(".pdf", files)]
+
+
+# read in marks from Excel worksheet
+df_exam <- readxl::read_xlsx(
+  file.path(pdf_path, gradesheet),
+  sheet = "Sampled",
+  range = paste0("A1:J", 1+length(files)))
+
+
+# define function for printing percentage marks 
+pct <- function(x) round(100*x, 1)
+
+
+#loop through all pdf files
+for(i in 1: #2){   
+    length(files)){  
+  
+  # set the pdf file in concern
+  pdf_file <- file.path(pdf_path, script_dir, files[i])
+  
+  studentID <- (files[i] %>% stringr::str_split(pattern = "( |\\p{P})", n = 2, simplify = T) %>% 
+                     c())[1]  
+  
+############################################################  
+# Note: Below is a flexible control to handle speciific student, if necessary, by commenting out "| TRUE"
+  if (#studentID == 170042107 # (with non-A4-size pdf)    #170058149 
+      #| 
+      TRUE 
+      ) {
+  
+    cat(i, ":", studentID, "; ")
+    
+    # find the marks of the student in concern  
+    marks <- df_exam %>% filter(`ID Number` == studentID)
+    
+    # set the texts for the marks to print    
+    MCQ = paste0("Q1-20 = ", marks$MC, 
+                 " (", marks$MC*2/2.5, " correct out of 20 MCQs, each 2.5 marks)")    
+    Q21 = paste0("Q21     = ", marks$Q21)
+    Q22 = paste0("Q22     = ", marks$Q22)
+    divider = paste0("-------------------")
+    Total0 = paste0("Total    = ", marks$Exam_raw, "        (raw)")
+    Total1 = paste0("             = ", marks$Exam_rescaled, "% (after rescaling)")
+    
+    
+    # convert p. 1 of exam script to an image file
+    page1 <- pdftools::pdf_convert(pdf_file, format = "png", pages = 1:1,
+                                   verbose = F)  # format = "jpg"
+    # read in the page-1 image as an magick object
+    img_src <- image_read(file.path(here::here(), page1))
+  
+    # open the device to draw the image and add texts to it
+    img_out <- image_draw(img_src)
+      text(30, 700, MCQ, pos = 4, col = "red")
+      text(30, 710, Q21, pos = 4, col = "red")
+      text(30, 720, Q22, pos = 4, col = "red")
+      text(30, 730, divider, pos = 4, col = "red")
+      text(30, 740, Total0, pos = 4, col = "red")
+      text(30, 750, Total1, pos = 4, col = "red")
+    dev.off()
+  
+    # plot the image file  
+    image_write(img_out , format = "pdf", "newpage1.pdf")
+  
+    # extract all remaining pages beyond p. 1
+    pdf_subset(pdf_file, pages = 2:pdf_length(pdf_file), output = "subset.pdf")
+  
+    # Combine the new page 1 with the old remaining pages
+    pdf_combine(c("newpage1.pdf", "subset.pdf"), 
+      output = file.path(pdf_path, destin_dir, files[i]))
+  
+    # Clean up the files no longer needed
+    unlink(c(page1, "newpage1.pdf", "subset.pdf"))
+  
+    } #end of if for handing specific student 
+  } #end of for-loop
+
+```
+
+
+
