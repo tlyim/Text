@@ -22,9 +22,21 @@ gradesheet = "FR_marks_May2021.xlsx"
 
 
 # set paths for source and destination directories of exam scripts
-script_dir = "allScripts"  
 #script_dir = "backupScripts"  
+script_dir = "wrongScripts"  
+#script_dir = "allScripts"  
 destin_dir = "markedScripts"  
+
+
+# set # of rows to read in from gradesheet
+N_scripts = 257
+
+# set print location
+x_loc = 30
+y_loc = 700
+pos_loc = 4
+
+#special = TRUE
 
 ```
 
@@ -276,6 +288,7 @@ df.check <- df.merged %>%
 # Write back LQ and MCQ marks to exam scripts
 ```{r, message = T}
 
+
 files <- list.files(path = file.path(pdf_path, script_dir))
 #keep only pdf files
 files <- files[grepl(".pdf", files)]
@@ -285,7 +298,9 @@ files <- files[grepl(".pdf", files)]
 df_exam <- readxl::read_xlsx(
   file.path(pdf_path, gradesheet),
   sheet = "Sampled",
-  range = paste0("A1:J", 1+length(files)))
+  range = paste0("A1:J", 1+N_scripts
+#                 length(files)
+                 ))
 
 
 # define function for printing percentage marks 
@@ -332,12 +347,12 @@ for(i in 1: #2){
   
     # open the device to draw the image and add texts to it
     img_out <- image_draw(img_src)
-      text(30, 700, MCQ, pos = 4, col = "red")
-      text(30, 710, Q21, pos = 4, col = "red")
-      text(30, 720, Q22, pos = 4, col = "red")
-      text(30, 730, divider, pos = 4, col = "red")
-      text(30, 740, Total0, pos = 4, col = "red")
-      text(30, 750, Total1, pos = 4, col = "red")
+      text(x_loc, y_loc +  0, MCQ, pos = pos_loc, col = "red")
+      text(x_loc, y_loc + 10, Q21, pos = pos_loc, col = "red")
+      text(x_loc, y_loc + 20, Q22, pos = pos_loc, col = "red")
+      text(x_loc, y_loc + 30, divider, pos = pos_loc, col = "red")
+      text(x_loc, y_loc + 40, Total0, pos = pos_loc, col = "red")
+      text(x_loc, y_loc + 50, Total1, pos = pos_loc, col = "red")
     dev.off()
   
     # plot the image file  
