@@ -29,7 +29,7 @@ destin_dir = "markedScripts"
 
 
 # set # of rows to read in from gradesheet
-N_scripts = 257
+N_scripts = 135   #257
 
 # set print location
 x_loc = 30
