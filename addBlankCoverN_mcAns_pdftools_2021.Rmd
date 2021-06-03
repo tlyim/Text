@@ -12,24 +12,26 @@ library(magick)
 library(scales)
 
 
-course_code = "FR2203" # This is the BS2203 workable version
-pdf_path = "G:/My Drive/@F/FR2203_moodle/FR_ExamMarking"
-#gradesheet = "Copy_May 2021 Gradesheet - FR2203 Company Valuation.xlsx"
-gradesheet = "FR_marks_May2021.xlsx"
-# course_code = "BS2203" # This is the BS2203 workable version
-# pdf_path = "G:/My Drive/@F/BS2203_moodle/BS_ExamMarking"
-# gradesheet = "Copy_.xlsx"
+# course_code = "FR2203" # This is the FR2203 workable version
+# pdf_path = "G:/My Drive/@F/FR2203_moodle/FR_ExamMarking"
+# #gradesheet = "Copy_May 2021 Gradesheet - FR2203 Company Valuation.xlsx"
+# gradesheet = "FR_marks_May2021.xlsx"
+
+course_code = "BS2203" # This is the BS2203 workable version
+pdf_path = "G:/My Drive/@F/BS2203_moodle/BS_ExamMarking"
+gradesheet = "BS_marks_May2021.xlsx"
 
 
 # set paths for source and destination directories of exam scripts
 #script_dir = "backupScripts"  
+
 script_dir = "wrongScripts"  
 #script_dir = "allScripts"  
 destin_dir = "markedScripts"  
 
 
 # set # of rows to read in from gradesheet
-N_scripts = 135   #257
+N_scripts = 135   #257   #
 
 # set print location
 x_loc = 30
@@ -331,7 +333,7 @@ for(i in 1: #2){
     
     # set the texts for the marks to print    
     MCQ = paste0("Q1-20 = ", marks$MC, 
-                 " (", marks$MC*2/2.5, " correct out of 20 MCQs, each 2.5 marks)")    
+                 " (", marks$MC/2.5, " correct out of 20 MCQs, each 2.5 marks)")    
     Q21 = paste0("Q21     = ", marks$Q21)
     Q22 = paste0("Q22     = ", marks$Q22)
     divider = paste0("-------------------")
