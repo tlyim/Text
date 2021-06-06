@@ -25,8 +25,8 @@ gradesheet = "BS_marks_May2021.xlsx"
 # set paths for source and destination directories of exam scripts
 #script_dir = "backupScripts"  
 
-script_dir = "wrongScripts"  
-#script_dir = "allScripts"  
+#script_dir = "wrongScripts"  
+script_dir = "allScripts"  
 destin_dir = "markedScripts"  
 
 
@@ -308,6 +308,14 @@ df_exam <- readxl::read_xlsx(
 # define function for printing percentage marks 
 pct <- function(x) round(100*x, 1)
 
+# set the blank.pdf file in concern
+blank_file <- file.path(pdf_path, "blank.pdf")
+# convert blank.pdf to an image file
+page1 <- pdftools::pdf_convert(blank_file, format = "png", pages = 1:1,
+                               verbose = F)  # format = "jpg"
+# read in the blank-page image as an magick object
+blank_src <- image_read(file.path(here::here(), page1))
+
 
 #loop through all pdf files
 for(i in 1: #2){   
@@ -315,7 +323,7 @@ for(i in 1: #2){
   
   # set the pdf file in concern
   pdf_file <- file.path(pdf_path, script_dir, files[i])
-  
+    
   studentID <- (files[i] %>% stringr::str_split(pattern = "( |\\p{P})", n = 2, simplify = T) %>% 
                      c())[1]  
   
@@ -337,32 +345,37 @@ for(i in 1: #2){
     Q21 = paste0("Q21     = ", marks$Q21)
     Q22 = paste0("Q22     = ", marks$Q22)
     divider = paste0("-------------------")
-    Total0 = paste0("Total    = ", marks$Exam_raw, "        (raw)")
-    Total1 = paste0("             = ", marks$Exam_rescaled, "% (after rescaling)")
+    Total0 = paste0("Total    = ", marks$Exam, "        ")
+#    Total1 = paste0("             = ", marks$Exam_rescaled, "% (after rescaling)")
     
     
-    # convert p. 1 of exam script to an image file
-    page1 <- pdftools::pdf_convert(pdf_file, format = "png", pages = 1:1,
-                                   verbose = F)  # format = "jpg"
-    # read in the page-1 image as an magick object
-    img_src <- image_read(file.path(here::here(), page1))
-  
+          # # convert p. 1 of exam script to an image file
+          # page1 <- pdftools::pdf_convert(pdf_file, format = "png", pages = 1:1,
+          #                                verbose = F)  # format = "jpg"
+          # # read in the page-1 image as an magick object
+          # img_src <- image_read(file.path(here::here(), page1))
+
+      
     # open the device to draw the image and add texts to it
-    img_out <- image_draw(img_src)
+    img_out <- image_draw(blank_src)
+#    img_out <- image_draw(img_src)
       text(x_loc, y_loc +  0, MCQ, pos = pos_loc, col = "red")
       text(x_loc, y_loc + 10, Q21, pos = pos_loc, col = "red")
       text(x_loc, y_loc + 20, Q22, pos = pos_loc, col = "red")
       text(x_loc, y_loc + 30, divider, pos = pos_loc, col = "red")
       text(x_loc, y_loc + 40, Total0, pos = pos_loc, col = "red")
-      text(x_loc, y_loc + 50, Total1, pos = pos_loc, col = "red")
+#      text(x_loc, y_loc + 50, Total1, pos = pos_loc, col = "red")
     dev.off()
   
     # plot the image file  
     image_write(img_out , format = "pdf", "newpage1.pdf")
   
-    # extract all remaining pages beyond p. 1
-    pdf_subset(pdf_file, pages = 2:pdf_length(pdf_file), output = "subset.pdf")
-  
+
+          # # extract all remaining pages beyond p. 1
+          # pdf_subset(pdf_file, pages = 2:pdf_length(pdf_file), output = "subset.pdf")
+    # extract all pages including p. 1
+    pdf_subset(pdf_file, pages = 1:pdf_length(pdf_file), output = "subset.pdf")
+    
     # Combine the new page 1 with the old remaining pages
     pdf_combine(c("newpage1.pdf", "subset.pdf"), 
       output = file.path(pdf_path, destin_dir, files[i]))
